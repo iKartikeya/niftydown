@@ -88,6 +88,7 @@ This is an index-level backtest. It does not model ETF/fund tracking error, divi
 <script>
 (() => {
 const DATA_URL="data/nifty50.csv";
+const DATA_FALLBACK="https://raw.githubusercontent.com/iKartikeya/niftydown/main/data/nifty50.csv";
 let data=[];
 const $=id=>document.getElementById(id);
 const money=x=>"₹"+Math.round(x).toLocaleString("en-IN");
@@ -174,13 +175,19 @@ async function loadText(text,label){
 }
 
 async function loadDefault(){
- $("status").textContent="Loading GitHub NIFTY data…";
+ $("status").textContent="Loading NIFTY data…";
  try{
-   const r=await fetch(DATA_URL,{cache:"no-store"});
-   if(!r.ok)throw Error("GitHub data request failed");
-   await loadText(await r.text(),"GitHub");
- }catch(e){
-   $("status").innerHTML='<span class="error">Could not load the default dataset. Upload a CSV instead.</span>';
+   let r=await fetch(DATA_URL,{cache:"no-store"});
+   if(!r.ok) throw Error("local data request failed");
+   await loadText(await r.text(),"repository");
+ }catch(e1){
+   try{
+     const r=await fetch(DATA_FALLBACK,{cache:"no-store"});
+     if(!r.ok) throw Error("fallback request failed");
+     await loadText(await r.text(),"GitHub fallback");
+   }catch(e2){
+     $("status").innerHTML='<span class="error">Data could not be loaded. Please open the GitHub Pages site (not the GitHub code view) or upload the CSV.</span>';
+   }
  }
 }
 $("loadDefault").addEventListener("click",loadDefault);
