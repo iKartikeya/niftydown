@@ -177,17 +177,11 @@ async function loadText(text,label){
 async function loadDefault(){
  $("status").textContent="Loading NIFTY data…";
  try{
-   let r=await fetch(DATA_URL,{cache:"no-store"});
-   if(!r.ok) throw Error("local data request failed");
+   const r=await fetch(DATA_URL,{cache:"no-store"});
+   if(!r.ok) throw Error("HTTP "+r.status);
    await loadText(await r.text(),"repository");
- }catch(e1){
-   try{
-     const r=await fetch(DATA_FALLBACK,{cache:"no-store"});
-     if(!r.ok) throw Error("fallback request failed");
-     await loadText(await r.text(),"GitHub fallback");
-   }catch(e2){
-     $("status").innerHTML='<span class="error">Data could not be loaded. Please open the GitHub Pages site (not the GitHub code view) or upload the CSV.</span>';
-   }
+ }catch(e){
+   $("status").innerHTML='<span class="error">Data load failed: '+e.message+'</span>';
  }
 }
 $("loadDefault").addEventListener("click",loadDefault);
