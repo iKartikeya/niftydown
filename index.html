@@ -190,7 +190,7 @@ $("file").addEventListener("change",e=>{
  r.onload=async()=>{try{await loadText(String(r.result),f.name)}catch(err){$("status").innerHTML='<span class="error">Error: '+err.message+'</span>';}};
  r.readAsText(f);
 });
-["start","end","amount","corpus","trigger","cooldown","override"].forEach(id=>$(id).addEventListener("input",run));
+["start","end","amount","corpus","trigger","cooldown","override"].forEach(id=>{$(id).addEventListener("input",run);$(id).addEventListener("change",run);});
 loadDefault();
 })();
 </script>
