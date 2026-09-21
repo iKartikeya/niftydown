@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NIFTY 50 Dip-Buy Backtester</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17202a;background:#f5f7fa}
+*{box-sizing:border-box}body{margin:0}.wrap{max-width:1100px;margin:auto;padding:28px 16px 60px}
+h1{margin:0 0 8px;font-size:clamp(28px,5vw,44px)}h2{margin:0 0 12px;font-size:20px}
+.sub{color:#5f6b76;margin-bottom:24px}.card{background:#fff;border:1px solid #dfe4ea;border-radius:14px;padding:18px;margin:14px 0}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.field label{display:block;font-size:12px;color:#697580;margin-bottom:6px}
+input{width:100%;min-height:42px;padding:9px 10px;border:1px solid #cfd6dd;border-radius:8px;background:#fff;font-size:15px}
+.file{padding:18px;border:2px dashed #cfd6dd;border-radius:12px}.hint{font-size:12px;color:#697580;margin-top:6px}
+.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.metric{background:#f7f9fb;border:1px solid #e2e7ec;border-radius:10px;padding:11px}.metric span{font-size:11px;color:#697580}.metric b{display:block;margin-top:4px;font-size:18px}
+.rule{padding:13px;border-left:4px solid #2563eb;background:#eff6ff;border-radius:8px;line-height:1.5;font-size:13px}
+.chart-wrap{overflow-x:auto}canvas{display:block;width:100%;min-width:700px;height:340px}
+.scroll{max-height:360px;overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e7ebef;text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{color:#697580}
+.status{font-size:13px;color:#53606c}.error{color:#b42318}.footer{font-size:12px;color:#697580;line-height:1.5}
+@media(max-width:800px){.grid{grid-template-columns:1fr 1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>NIFTY 50 Dip-Buy Backtester</h1>
+<div class="sub">Test the ₹30,000 dip-buying strategy against historical NIFTY 50 data. Everything runs locally in your browser.</div>
+
+<div class="card">
+<h2>1. Load data</h2>
+<div class="file">
+<input id="file" type="file" accept=".csv,text/csv">
+<div class="hint">CSV must contain <b>Date</b> and <b>Close</b> columns. No data is uploaded to a server.</div>
+</div>
+<div id="status" class="status" style="margin-top:10px">No CSV loaded.</div>
+</div>
+
+<div class="card">
+<h2>2. Strategy parameters</h2>
+<div class="grid">
+<div class="field"><label>Start date</label><input id="start" type="date"></div>
+<div class="field"><label>End date</label><input id="end" type="date"></div>
+<div class="field"><label>Investment per buy (₹)</label><input id="amount" type="number" value="30000" min="1" step="1000"></div>
+<div class="field"><label>Total corpus (₹)</label><input id="corpus" type="number" value="1000000" min="0" step="10000"></div>
+<div class="field"><label>Daily fall trigger (%)</label><input id="trigger" type="number" value="1" min="0.01" step="0.1"></div>
+<div class="field"><label>Cooldown (trading days)</label><input id="cooldown" type="number" value="7" min="0" step="1"></div>
+<div class="field"><label>New-low override (%)</label><input id="override" type="number" value="1" min="0.01" step="0.1"></div>
+</div>
+<div class="rule" style="margin-top:14px"><b>Rule:</b> Buy when today's close falls at least the trigger % from yesterday's close and the cooldown has expired. During cooldown, buy anyway if today's close is at least the override % below the most recent purchase price. Every purchase resets the cooldown and reference price. The corpus is a hard ceiling and partial purchases are not allowed.</div>
+</div>
+
+<div class="card">
+<h2>Results</h2>
+<div class="metrics">
+<div class="metric"><span>Purchases</span><b id="n">—</b></div>
+<div class="metric"><span>Deployed</span><b id="deployed">—</b></div>
+<div class="metric"><span>Corpus left</span><b id="left">—</b></div>
+<div class="metric"><span>Average buy</span><b id="avg">—</b></div>
+<div class="metric"><span>Final value</span><b id="value">—</b></div>
+<div class="metric"><span>Units</span><b id="units">—</b></div>
+<div class="metric"><span>P/L</span><b id="pl">—</b></div>
+<div class="metric"><span>Return</span><b id="return">—</b></div>
+<div class="metric"><span>XIRR</span><b id="xirr">—</b></div>
+<div class="metric"><span>Last buy</span><b id="last">—</b></div>
+</div>
+</div>
+
+<div class="card">
+<h2>NIFTY 50 and buy signals</h2>
+<div id="chartStatus" class="status"></div>
+<div class="chart-wrap"><canvas id="chart" width="1000" height="420"></canvas></div>
+</div>
+
+<div class="card">
+<h2>Purchase log</h2>
+<div class="scroll"><table><thead><tr><th>Date</th><th>NIFTY</th><th>Daily %</th><th>Reason</th><th>Days</th><th>Corpus left</th></tr></thead><tbody id="log"><tr><td colspan="6">Load a CSV first.</td></tr></tbody></table></div>
+</div>
+
+<div class="footer">
+<b>Important:</b> This is a backtest of an index-level strategy. It does not model ETF/fund tracking error, dividends, brokerage, taxes, slippage, or execution price differences. XIRR uses each purchase date and the portfolio's index-linked value on the selected end date.
+</div>
+</div>
+
+<script>
+(() => {
+let data=[];
+const $=id=>document.getElementById(id);
+const money=x=>"₹"+Math.round(x).toLocaleString("en-IN");
+const fmt=x=>Number(x).toLocaleString("en-IN",{maximumFractionDigits:2});
+
+function parseCSV(text){
+  const lines=text.replace(/^\\uFEFF/,"").split(/\\r?\\n/).filter(x=>x.trim());
+  if(lines.length<2) throw Error("No data rows found.");
+  const headers=lines[0].split(",").map(x=>x.trim().toLowerCase());
+  const di=headers.indexOf("date"), ci=headers.indexOf("close");
+  if(di<0||ci<0) throw Error("CSV must contain Date and Close columns.");
+  const out=[];
+  for(let i=1;i<lines.length;i++){
+    const p=lines[i].split(",");
+    let date=(p[di]||"").trim();
+    const close=Number((p[ci]||"").replace(/,/g,""));
+    if(!date||!Number.isFinite(close)) continue;
+    const m=date.match(/^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/);
+    if(m) date=`${m[3]}-${String(m[1]).padStart(2,"0")}-${String(m[2]).padStart(2,"0")}`;
+    else date=date.slice(0,10);
+    out.push({date,close});
+  }
+  out.sort((a,b)=>a.date.localeCompare(b.date));
+  return out;
+}
+
+function xirr(cfs){
+  if(cfs.length<2) return null;
+  const t0=new Date(cfs[0].date);
+  const npv=r=>cfs.reduce((s,c)=>{
+    const years=(new Date(c.date)-t0)/86400000/365;
+    return s+c.amount/Math.pow(1+r,years);
+  },0);
+  let lo=-0.9999,hi=1;
+  let a=npv(lo),b=npv(hi),guard=0;
+  while(a*b>0&&hi<100000&&guard++<40){hi*=2;b=npv(hi)}
+  if(!Number.isFinite(b)||a*b>0)return null;
+  for(let i=0;i<200;i++){
+    const mid=(lo+hi)/2,v=npv(mid);
+    if(v>0)lo=mid;else hi=mid;
+  }
+  return (lo+hi)/2;
+}
+
+function draw(d,buys){
+  const canvas=$("chart"),ctx=canvas.getContext("2d");
+  const w=canvas.width,h=canvas.height;
+  ctx.clearRect(0,0,w,h);
+  if(!d.length)return;
+  const pad={l:55,r:20,t:20,b:45};
+  const min=Math.min(...d.map(x=>x.close)),max=Math.max(...d.map(x=>x.close));
+  const X=i=>pad.l+i*(w-pad.l-pad.r)/Math.max(1,d.length-1);
+  const Y=v=>pad.t+(max-v)*(h-pad.t-pad.b)/Math.max(1,max-min);
+  ctx.strokeStyle="#dfe4ea";ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pad.l,h-pad.b);ctx.lineTo(w-pad.r,h-pad.b);ctx.stroke();
+  ctx.strokeStyle="#2563eb";ctx.lineWidth=2;ctx.beginPath();
+  d.forEach((q,i)=>i?ctx.lineTo(X(i),Y(q.close)):ctx.moveTo(X(i),Y(q.close)));ctx.stroke();
+  ctx.fillStyle="#dc2626";
+  buys.forEach(b=>{ctx.beginPath();ctx.arc(X(b.i),Y(b.price),5,0,Math.PI*2);ctx.fill()});
+  ctx.fillStyle="#53606c";ctx.font="12px system-ui";
+  ctx.fillText(fmt(max),5,pad.t+5);ctx.fillText(fmt(min),5,h-pad.b);
+  ctx.fillText(d[0].date,pad.l,h-15);ctx.fillText(d[d.length-1].date,w-100,h-15);
+}
+
+function run(){
+  if(data.length<2)return;
+  let s=$("start").value,e=$("end").value;
+  if(s>e)[s,e]=[e,s];
+  const d=data.filter(x=>x.date>=s&&x.date<=e);
+  if(d.length<2){$("status").textContent="Selected range needs at least two trading sessions.";return}
+  const amount=Math.max(0,Number($("amount").value)||0);
+  const corpus=Math.max(0,Number($("corpus").value)||0);
+  const trigger=Math.max(.0001,Number($("trigger").value)||1)/100;
+  const cooldown=Math.max(0,Math.floor(Number($("cooldown").value)||0));
+  const override=Math.max(.0001,Number($("override").value)||1)/100;
+  let buys=[],last=-1,lastPrice=null,deployed=0,units=0;
+
+  for(let i=1;i<d.length;i++){
+    const daily=d[i].close/d[i-1].close-1;
+    const normal=daily<=-trigger;
+    const ov=lastPrice!==null&&d[i].close<=lastPrice*(1-override);
+    const expired=last<0||i-last>=cooldown;
+    if(amount>0&&deployed+amount<=corpus&&((normal&&expired)||ov)){
+      deployed+=amount;units+=amount/d[i].close;
+      buys.push({i,date:d[i].date,price:d[i].close,daily,reason:ov?"New-low override":"Daily fall + cooldown",days:last<0?"—":i-last,left:corpus-deployed});
+      last=i;lastPrice=d[i].close;
+    }
+  }
+
+  const finalPrice=d[d.length-1].close;
+  const value=units*finalPrice;
+  const pl=value-deployed;
+  const ret=deployed?pl/deployed:null;
+  const cfs=buys.map(b=>({date:b.date,amount:-amount}));
+  if(buys.length)cfs.push({date:d[d.length-1].date,amount:value});
+  const annual=xirr(cfs);
+
+  $("n").textContent=buys.length;
+  $("deployed").textContent=money(deployed);
+  $("left").textContent=money(corpus-deployed);
+  $("avg").textContent=units?fmt(deployed/units):"—";
+  $("value").textContent=money(value);
+  $("units").textContent=fmt(units);
+  $("pl").textContent=money(pl);
+  $("return").textContent=ret===null?"—":(ret*100).toFixed(2)+"%";
+  $("xirr").textContent=annual===null?"—":(annual*100).toFixed(2)+"%";
+  $("last").textContent=buys.length?buys[buys.length-1].date:"—";
+  $("chartStatus").textContent=`${d.length.toLocaleString("en-IN")} trading sessions · final NIFTY ${fmt(finalPrice)}`;
+
+  $("log").innerHTML=buys.length?buys.map(b=>`<tr><td>${b.date}</td><td>${fmt(b.price)}</td><td>${(b.daily*100).toFixed(2)}%</td><td>${b.reason}</td><td>${b.days}</td><td>${money(b.left)}</td></tr>`).join(""):`<tr><td colspan="6">No purchases triggered.</td></tr>`;
+  draw(d,buys);
+}
+
+$("file").addEventListener("change",e=>{
+  const f=e.target.files?.[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      data=parseCSV(String(reader.result));
+      if(data.length<2)throw Error("No usable rows.");
+      $("start").min=data[0].date;$("start").max=data[data.length-1].date;
+      $("end").min=data[0].date;$("end").max=data[data.length-1].date;
+      $("start").value=data[0].date;$("end").value=data[data.length-1].date;
+      $("status").textContent=`Loaded ${data.length.toLocaleString("en-IN")} sessions: ${data[0].date} → ${data[data.length-1].date}`;
+      run();
+    }catch(err){$("status").innerHTML=`<span class="error">Error: ${err.message}</span>`}
+  };
+  reader.readAsText(f);
+});
+
+["start","end","amount","corpus","trigger","cooldown","override"].forEach(id=>$(id).addEventListener("input",run));
+})();
+</script>
+</body>
+</html>
