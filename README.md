@@ -1,35 +1,27 @@
-# NIFTY 50 Dip-Buy Backtester
+# NIFTY 50 Dip-Buy Strategy
 
-A client-side GitHub Pages website for testing the NIFTY 50 dip-buying strategy.
+Interactive GitHub Pages web application for backtesting the NIFTY 50 dip-buying strategy.
 
 ## Strategy
 
-- Investment per trigger: ₹30,000
-- Daily fall trigger: 1%
-- Cooldown: 7 trading days
-- New-low override: 1% below the most recent purchase price
+- Investment per purchase: ₹30,000 by default
+- Normal trigger: NIFTY 50 daily close falls at least 1% from the previous trading day's close
+- Cooldown: 7 trading days after every purchase
+- New-low override: during cooldown, buy if the current close is at least 1% below the most recent purchase price
 - Every purchase resets the cooldown and reference price
+- Maximum one purchase per trading day
 - Total corpus is a hard limit
 - No partial final purchase
-- XIRR is calculated from actual purchase dates and the portfolio value on the selected end date
+- XIRR uses actual purchase dates and the index-linked value on the selected end date
 
 ## Data
 
-Upload a CSV containing at least:
-
-`Date, Close`
-
-The website processes the file locally in the browser. It does not upload the CSV anywhere.
+The app automatically loads the configured historical NIFTY CSV from GitHub. You can also upload your own CSV with `Date` and `Close` columns.
 
 ## GitHub Pages
 
-1. Create a new GitHub repository.
-2. Upload `index.html` and this `README.md`.
-3. Go to **Settings → Pages**.
-4. Select **Deploy from a branch**.
-5. Select the `main` branch and `/ (root)`.
-6. Save. GitHub will provide the Pages URL.
+In the repository, open **Settings → Pages**, choose **Deploy from a branch**, select `main` and `/(root)`, then save. The site will be available at the GitHub Pages URL shown by GitHub.
 
-## Important
+## Limitations
 
-This is an index-level backtest. It does not model ETF/fund tracking error, dividends, brokerage, taxes, slippage, or execution differences.
+This is an index-level backtest. It does not model ETF/fund tracking error, dividends, brokerage, taxes, slippage, or execution-price differences.
